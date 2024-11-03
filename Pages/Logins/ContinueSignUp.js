@@ -45,20 +45,42 @@ const ContinueSignUp = () => {
     load();
   }, []);
 
-  const handleSubmit = async () => {
-    const userData = {
-      firstname,
-      lastname,
-      email,
-      password,
-      address,
-      phoneNumber,
-      birthdate: birthdate.toISOString(),
-      gender,
-      profilePicture,
-    };
+  const handleImageUpload = async (uri) => {
+    const formData = new FormData();
+    formData.append('file', {
+      uri,
+      type: 'image/jpeg', // adjust according to your image type
+      name: 'profile.jpg', // or any name you prefer
+    });
+  
+    const response = await fetch('http://192.168.1.5:3000/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+  
+    if (!response.ok) {
+      throw new Error('Image upload failed');
+    }
+  
+    const data = await response.json();
+    return data.url; // Assuming the response contains the image URL
+  };
 
+  const handleSubmit = async () => {
     try {
+      let uploadedImageUrl = profilePicture ? await handleImageUpload(profilePicture) : null; // Upload image first
+      const userData = {
+        firstname,
+        lastname,
+        email,
+        password,
+        address,
+        phoneNumber,
+        birthdate: birthdate.toISOString(),
+        gender,
+        profilePicture: uploadedImageUrl, // Save URL in the user data
+      };
+  
       const response = await fetch("http://192.168.1.5:3000/api/users", {
         method: "POST",
         headers: {
@@ -66,12 +88,11 @@ const ContinueSignUp = () => {
         },
         body: JSON.stringify(userData),
       });
-
+  
       if (!response.ok) {
         throw new Error("Failed to create user");
       }
-
-      const data = await response.json();
+  
       Alert.alert("Success", "You have successfully registered!");
       navigation.navigate("LoginPage");
     } catch (error) {

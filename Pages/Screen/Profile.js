@@ -10,20 +10,18 @@ import {
   Alert,
 } from "react-native";
 import { useUser } from "../../Components/UserContext";
-import Icon from "react-native-vector-icons/FontAwesome";
-import { useNavigation, CommonActions } from "@react-navigation/native"; // Import useNavigation
+import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from "@react-navigation/native";
 
-export default function Component() {
-  const { userProfile, loading, error } = useUser(); // Destructure logout function
-  const navigation = useNavigation(); // Get the navigation object
+export default function ProfileScreen() {
+  const { userProfile, loading, error } = useUser();
+  const navigation = useNavigation();
 
   const formatDate = (dateString) => {
-    const options = { year: "numeric", month: "long", day: "numeric" }; // Define format options
-    const date = new Date(dateString); // Convert the timestamp to a Date object
-    return date.toLocaleDateString("en-US", options); // Format the date
+    const options = { year: "numeric", month: "long", day: "numeric" };
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-US", options);
   };
-
-  console.log("User Profile:", userProfile); // Log user profile data
 
   if (loading) {
     return (
@@ -51,10 +49,7 @@ export default function Component() {
 
   const handleLogout = () => {
     Alert.alert("Log Out", "Are you sure you want to log out?", [
-      {
-        text: "Cancel",
-        style: "cancel",
-      },
+      { text: "Cancel", style: "cancel" },
       {
         text: "OK",
         onPress: () => {
@@ -67,44 +62,26 @@ export default function Component() {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
+        <Ionicons name="person" size={24} color="#4A90E2" />
         <Text style={styles.headerText}>Profile</Text>
       </View>
-      <View style={styles.profileContainer}>
-        <View style={styles.profilePictureContainer}>
+      <View style={styles.profileSection}>
         <Image
-          source={{ uri: userProfile.profilePicture }} // Automatically use the uploaded profile picture URL
+          source={{ uri: userProfile.profilePicture }}
           style={styles.profilePicture}
         />
-          <Text style={styles.nameText}>
-            {userProfile.firstname} {userProfile.lastname}
-          </Text>
-        </View>
-        <View style={styles.card}>
-          <ProfileItem
-            icon="envelope"
-            label="Email"
-            value={userProfile.email}
-          />
-          <ProfileItem
-            icon="home"
-            label="Address"
-            value={userProfile.address}
-          />
-          <ProfileItem
-            icon="phone"
-            label="Phone"
-            value={userProfile.phoneNumber || "N/A"}
-          />
-          <ProfileItem
-            icon="calendar"
-            label="Date of Birth"
-            value={formatDate(userProfile.birthdate) || "N/A"}
-          />
-
-        </View>
+        <Text style={styles.nameText}>
+          {userProfile.firstname} {userProfile.lastname}
+        </Text>
+        <Text style={styles.emailText}>{userProfile.email}</Text>
       </View>
-      <TouchableOpacity style={styles.editButton} onPress={handleLogout}>
-        <Text style={styles.editButtonText}>Log Out</Text>
+      <View style={styles.infoSection}>
+        <ProfileItem icon="home-outline" label="Address" value={userProfile.address} />
+        <ProfileItem icon="call-outline" label="Phone" value={userProfile.phoneNumber || 'N/A'} />
+        <ProfileItem icon="calendar-outline" label="Date of Birth" value={formatDate(userProfile.birthdate) || 'N/A'} />
+      </View>
+      <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+        <Text style={styles.logoutButtonText}>Log Out</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -112,10 +89,10 @@ export default function Component() {
 
 const ProfileItem = ({ icon, label, value }) => (
   <View style={styles.profileItem}>
-    <Icon name={icon} size={24} color="#339bfd" style={styles.icon} />
-    <View>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
+    <Ionicons name={icon} size={20} color="#339bfd" style={styles.itemIcon} />
+    <View style={styles.itemTextContainer}>
+      <Text style={styles.itemLabel}>{label}</Text>
+      <Text style={styles.itemValue}>{value}</Text>
     </View>
   </View>
 );
@@ -123,82 +100,97 @@ const ProfileItem = ({ icon, label, value }) => (
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#162a40",
+    backgroundColor: '#162a40',
+    paddingHorizontal: 20,
   },
   header: {
-    padding: 20,
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+    padding: 10,
     borderBottomWidth: 1,
-    borderBottomColor: "#339bfd",
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
   headerText: {
-    fontSize: 28,
-    color: "#FFF",
-    fontWeight: "bold",
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginLeft: 10,
   },
   centerContainer: {
     flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   errorText: {
-    color: "#ff6b6b",
+    color: '#EF4444',
     fontSize: 16,
   },
-  profileContainer: {
-    padding: 10,
-  },
-  profilePictureContainer: {
-    alignItems: "center",
-    marginBottom: 20,
+  profileSection: {
+    alignItems: 'center',
+    marginTop: 20,
+    padding: 20,
+    backgroundColor: '#1E3A5F',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: '#2D436B',
   },
   profilePicture: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    borderWidth: 3,
-    borderColor: "#339bfd",
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginBottom: 10,
   },
   nameText: {
-    color: "#FFF",
-    fontSize: 24,
-    fontWeight: "bold",
-    marginTop: 10,
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    marginBottom: 4,
   },
-  card: {
-    backgroundColor: "rgba(255, 255, 255, 0.1)",
+  emailText: {
+    fontSize: 14,
+    color: '#A1A7B5',
+  },
+  infoSection: {
+    marginTop: 20,
+    backgroundColor: '#1E3A5F',
     borderRadius: 10,
-    padding: 20,
-    marginBottom: 20,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#2D436B',
   },
   profileItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#2D436B',
   },
-  icon: {
+  itemIcon: {
     marginRight: 15,
   },
-  label: {
-    color: "#339bfd",
-    fontSize: 14,
-    marginBottom: 5,
+  itemTextContainer: {
+    flex: 1,
   },
-  value: {
-    color: "#FFF",
+  itemLabel: {
+    fontSize: 12,
+    color: '#A1A7B5',
+  },
+  itemValue: {
     fontSize: 16,
+    color: '#FFFFFF',
+    fontWeight: '500',
   },
-  editButton: {
-    backgroundColor: "#339bfd",
-    padding: 12,
-    borderRadius: 10,
-    alignItems: "center",
-    marginHorizontal: 30,
-    bottom: 10,
+  logoutButton: {
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 30,
   },
-  editButtonText: {
-    color: "#FFF",
-    fontSize: 18,
-    fontWeight: "bold",
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
   },
 });

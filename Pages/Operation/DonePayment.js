@@ -9,18 +9,19 @@ import {
   ActivityIndicator,
 } from "react-native";
 import loadFonts from "../../LoadFonts/load";
-import { useNavigation, CommonActions, useRoute } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { useUser } from "../../Components/UserContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CommonActions } from "@react-navigation/native";
 
 const DonePayment = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const navigation = useNavigation();
+  const [loading, setLoading] = useState(false); // Add loading state
   const route = useRoute();
   const userProfile = useUser();
 
   const { deliveryFee, transactionFee, totalCost, gallonsCost } = route.params;
-  const email = userProfile?.userProfile?.email; // Safely access the email
+  const email = userProfile?.userProfile?.email;
 
   const handleConfirm = async () => {
     if (!email || !deliveryFee || !transactionFee || !totalCost || !gallonsCost) {
@@ -35,8 +36,10 @@ const DonePayment = () => {
       totalCost,
       gallonsCost,
       status: "Processing",
+      date: new Date().toISOString(),
     };
   
+    setLoading(true);
     try {
       const response = await fetch("http://192.168.1.5:3000/api/orders", {
         method: "POST",
@@ -48,49 +51,38 @@ const DonePayment = () => {
   
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.error || "Failed to save user data");
+        throw new Error(errorData.error || "Failed to save order");
       }
   
+      const savedOrder = await response.json();
       Alert.alert(
         "Confirmed",
-        "Thank you for using the app, your order is being processed."
+        "Thank you for using the app, your order is being processed.",
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              navigation.dispatch(
+                CommonActions.reset({
+                  index: 0,
+                  routes: [{ name: "Dashboard" }],
+                })
+              );
+              navigation.navigate("Order", { 
+                newOrderId: savedOrder._id,
+                refresh: true
+              });
+            }
+          }
+        ]
       );
-  
-      // Retrieve existing orders from AsyncStorage
-      const existingOrders = await AsyncStorage.getItem("orderData");
-      let ordersList = existingOrders ? JSON.parse(existingOrders) : [];
-  
-      // Ensure ordersList is an array
-      if (!Array.isArray(ordersList)) {
-        console.warn("Orders list is not an array, initializing to an empty array.");
-        ordersList = [];
-      }
-  
-      // Append the new order to the existing list
-      ordersList.push(newOrder);
-  
-      // Save updated orders back to AsyncStorage
-      await AsyncStorage.setItem("orderData", JSON.stringify(ordersList));
-  
-      // Navigate to the Dashboard and then to the Order screen
-      navigation.dispatch(
-        CommonActions.reset({
-          index: 0, // Reset to the first index
-          routes: [{ name: "Dashboard" }], // Navigate to the Dashboard
-        })
-      );
-  
-      // Navigate to the Order screen with the updated order data
-      navigation.navigate("Order", { orders: ordersList });
-  
     } catch (error) {
       console.error("Error during fetch:", error);
       Alert.alert("Error", error.message);
+    } finally {
+      setLoading(false);
     }
   };
-  
-  
-  
 
   useEffect(() => {
     const load = async () => {
@@ -106,7 +98,7 @@ const DonePayment = () => {
   }, []);
 
   if (!fontsLoaded) {
-    return <ActivityIndicator size="large" color="#339bfd" />; // Loading indicator
+    return <ActivityIndicator size="large" color="#339bfd" />;
   }
 
   return (

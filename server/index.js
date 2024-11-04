@@ -159,6 +159,27 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+app.get('/api/orders', async (req, res) => {
+  const { email } = req.query;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required' });
+  }
+
+  try {
+    const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Assuming orders are stored in the user document
+    const orders = user.orders || [];
+    res.json(orders);
+  } catch (err) {
+    console.error('Error fetching orders:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Route to create a new order
 app.post('/api/orders', async (req, res) => {
   const { deliveryFee, transactionFee, totalCost, gallonsCost, email, status } = req.body;
@@ -176,26 +197,47 @@ app.post('/api/orders', async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Update user document with order details
-    user.deliveryFee = deliveryFee;
-    user.transactionFee = transactionFee;
-    user.totalCost = totalCost;
-    user.gallonsCost = gallonsCost;
-    user.status = status || "Processing"; // Add default status
+    // Create a new order
+    const newOrder = {
+      deliveryFee,
+      transactionFee,
+      totalCost,
+      gallonsCost,
+      status: status || "Processing",
+      date: new Date()
+    };
+
+    // Add the new order to the user's orders array
+    user.orders.push(newOrder);
 
     // Save the updated user document
     await user.save();
 
-    // Respond with the updated user details
-    res.status(200).json({
-      deliveryFee: user.deliveryFee,
-      transactionFee: user.transactionFee,
-      totalCost: user.totalCost,
-      gallonsCost: user.gallonsCost,
-      status: user.status,
-    });
+    // Respond with the newly created order
+    res.status(201).json(newOrder);
   } catch (err) {
     console.error('Error creating order:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Route to delete a specific order
+app.delete('/api/orders/:orderId', async (req, res) => {
+  const { orderId } = req.params;
+
+  try {
+    const result = await User.updateOne(
+      { 'orders._id': orderId },
+      { $pull: { orders: { _id: orderId } } }
+    );
+
+    if (result.nModified === 0) {
+      return res.status(404).json({ error: 'Order not found' });
+    }
+
+    res.json({ message: 'Order deleted successfully' });
+  } catch (err) {
+    console.error('Error deleting order:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

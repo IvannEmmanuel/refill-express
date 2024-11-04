@@ -59,6 +59,14 @@ const userSchema = new mongoose.Schema({
     type: String, // To store the status of the order
     required: false, // Set to true if mandatory
   },
+  orders: [{
+    deliveryFee: Number,
+    transactionFee: Number,
+    totalCost: Number,
+    gallonsCost: Number,
+    status: String,
+    date: Date
+  }]
 });
 
 module.exports = mongoose.model('User', userSchema);

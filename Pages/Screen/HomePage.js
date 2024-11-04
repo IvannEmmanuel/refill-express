@@ -10,12 +10,14 @@ import {
   SafeAreaView,
   ScrollView,
 } from "react-native";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
 import loadFonts from "../../LoadFonts/load";
 import { useNavigation } from "@react-navigation/native"
+import mapStyle from '../../Style/mapStyle';
+import decodePolyline from '../../Components/decodePolyline';
 
 const HomePage = () => {
   const [fontsLoaded, setFontsLoaded] = useState(false);
@@ -27,6 +29,7 @@ const HomePage = () => {
   const [distance, setDistance] = useState(null);
   const [polylineCoordinates, setPolylineCoordinates] = useState([]); // State for polyline coordinates
   const navigation = useNavigation();
+  const mapRef = useRef(null);
 
   useEffect(() => {
     const load = async () => {
@@ -48,48 +51,6 @@ const HomePage = () => {
       station: selectedStation,
       distance: distance,
     });
-  };
-
-  const decodePolyline = (encoded) => {
-    let points = [];
-    let index = 0;
-    const len = encoded.length;
-    let lat = 0;
-    let lng = 0;
-
-    while (index < len) {
-      let b;
-      let shift = 0;
-      let result = 0;
-
-      do {
-        b = encoded.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-
-      const dlat = (result >> 1) ^ -(result & 1);
-      lat += dlat;
-
-      shift = 0;
-      result = 0;
-
-      do {
-        b = encoded.charCodeAt(index++) - 63;
-        result |= (b & 0x1f) << shift;
-        shift += 5;
-      } while (b >= 0x20);
-
-      const dlng = (result >> 1) ^ -(result & 1);
-      lng += dlng;
-
-      points.push({
-        latitude: lat / 1e5,
-        longitude: lng / 1e5,
-      });
-    }
-
-    return points;
   };
 
   const requestLocation = async () => {
@@ -205,13 +166,18 @@ const HomePage = () => {
             latitudeDelta: 0.0922,
             longitudeDelta: 0.0421,
           }}
+          customMapStyle={mapStyle}
         >
           {location && (
             <Marker
               coordinate={location}
               title="You are here"
-              pinColor="lightgreen"
-            />
+              description="Your current location"
+            >
+              <View style={styles.markerContainer}>
+                <View style={styles.markerDot} />
+              </View>
+            </Marker>
           )}
 
           {searchResults.map((place) => (
@@ -223,8 +189,11 @@ const HomePage = () => {
               }}
               title={place.name}
               description={place.vicinity}
-              pinColor="#339bfd"
-            />
+            >
+              <View style={styles.stationMarkerContainer}>
+                <Ionicons name="water" size={24} color="#339bfd" />
+              </View>
+            </Marker>
           ))}
 
           {polylineCoordinates.length > 0 && (
@@ -340,7 +309,26 @@ const styles = StyleSheet.create({
   },
   map: {
     width: "100%",
-    height: 300, // Fixed height for the map
+    height: 300,
+  },
+  markerContainer: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: 'rgba(51, 155, 253, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  markerDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: '#339bfd',
+  },
+  stationMarkerContainer: {
+    backgroundColor: 'white',
+    borderRadius: 15,
+    padding: 5,
   },
   waterContainer: {
     padding: 15,
@@ -469,10 +457,12 @@ const styles = StyleSheet.create({
   stationPrice: {
     color: "#FFF",
     fontSize: 14,
+    marginTop: 5,
   },
   selectedPrice: {
     color: "#FFF",
     fontSize: 16,
     fontWeight: "bold",
+    marginTop: 5,
   },
 });

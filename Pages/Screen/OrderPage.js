@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -6,146 +6,278 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
+  Alert,
+  RefreshControl,
+  Image
 } from "react-native";
 import { useUser } from "../../Components/UserContext";
-import { useRoute } from "@react-navigation/native";
+import { useRoute, useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from '@expo/vector-icons';
 
-const Order = () => {
+export default function Order() {
   const userProfile = useUser();
   const route = useRoute();
-  const email = userProfile?.userProfile?.email || route.params?.email;
+  const email = userProfile?.userProfile?.email;
+  const [orders, setOrders] = useState([]);
+  const [newOrderId, setNewOrderId] = useState(null);
+  const [refreshing, setRefreshing] = useState(false);
 
-  // Ensure orders is an array
-  const orders = route.params?.orders || [];
+  const fetchOrders = async () => {
+    try {
+      const response = await fetch(`http://192.168.1.5:3000/api/orders?email=${email}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch orders');
+      }
+      const data = await response.json();
+      setOrders(data);
+    } catch (error) {
+      console.error('Failed to load orders:', error);
+      Alert.alert('Error', 'Failed to load orders. Please try again.');
+    }
+  };
 
-  // Filter orders based on the user's email
-  const userOrders = orders.filter(order => order.email === email);
+  const onRefresh = React.useCallback(async () => {
+    setRefreshing(true);
+    await fetchOrders();
+    setRefreshing(false);
+  }, [email]);
 
-  const [updatedOrders, setUpdatedOrders] = useState(userOrders);
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchOrders();
+      if (route.params?.newOrderId) {
+        setNewOrderId(route.params.newOrderId);
+      }
+      if (route.params?.refresh) {
+        onRefresh();
+      }
+    }, [route.params, email])
+  );
 
-  const handleDeleteOrder = (orderToDelete) => {
-    setUpdatedOrders(prevOrders => 
-      prevOrders.filter(order => order !== orderToDelete)
+  const handleDeleteOrder = async (orderId) => {
+    Alert.alert(
+      "Confirm Delete",
+      "Are you sure you want to delete this order?",
+      [
+        {
+          text: "Cancel",
+          style: "cancel",
+        },
+        {
+          text: "Delete",
+          onPress: async () => {
+            try {
+              const response = await fetch(`http://192.168.1.5:3000/api/orders/${orderId}`, {
+                method: 'DELETE',
+              });
+              if (!response.ok) {
+                throw new Error('Failed to delete order');
+              }
+              Alert.alert('Success', 'Order deleted successfully');
+              fetchOrders(); // Refresh the orders list
+            } catch (error) {
+              console.error('Failed to delete order:', error);
+              Alert.alert('Error', 'Failed to delete order. Please try again.');
+            }
+          },
+        },
+      ]
     );
   };
 
   return (
     <SafeAreaView style={styles.container}>
-      <Text style={styles.header}>Order Summary</Text>
-      <ScrollView contentContainerStyle={styles.detailsContainer}>
-        {updatedOrders.length > 0 ? (
-          updatedOrders.map((order, index) => (
-            <View key={index} style={styles.orderContainer}>
-              <Text style={styles.label}>Order {index + 1}</Text>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Email: </Text>
-                <Text style={styles.value}>{email}</Text>
+      <View style={styles.header}>
+        <Ionicons name="water" size={24} color="#4A90E2" />
+        <Text style={styles.headerText}>Order Summary</Text>
+      </View>
+      <ScrollView
+        contentContainerStyle={styles.scrollContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#4A90E2" />
+        }
+      >
+        {orders.length > 0 ? (
+          orders.map((order) => (
+            <View
+              key={order._id}
+              style={[
+                styles.orderCard,
+                order._id === newOrderId && styles.newOrderHighlight,
+              ]}
+            >
+              <View style={styles.orderHeader}>
+                <Text style={styles.orderTitle}>Order {order._id}</Text>
               </View>
 
-              <View style={styles.row}>
-                <Text style={styles.label}>Gallons Cost:</Text>
-                <Text style={styles.value}>₱{order.gallonsCost.toFixed(2)}</Text>
+              <View style={styles.orderDetails}>
+                <View style={styles.detailRow}>
+                  <Ionicons name="calendar-outline" size={18} color="#4A90E2" />
+                  <Text style={styles.detailText}>{new Date(order.date).toLocaleString()}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Ionicons name="water-outline" size={18} color="#4A90E2" />
+                  <Text style={styles.detailText}>Gallons Cost: ₱{order.gallonsCost.toFixed(2)}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Ionicons name="car-outline" size={18} color="#4A90E2" />
+                  <Text style={styles.detailText}>Delivery Fee: ₱{order.deliveryFee.toFixed(2)}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Ionicons name="card-outline" size={18} color="#4A90E2" />
+                  <Text style={styles.detailText}>Transaction Fee: ₱{order.transactionFee.toFixed(2)}</Text>
+                </View>
+
+                <View style={styles.totalRow}>
+                  <Ionicons name="cash-outline" size={20} color="#4A90E2" />
+                  <Text style={styles.totalText}>Total Cost: ₱{order.totalCost.toFixed(2)}</Text>
+                </View>
               </View>
 
-              <View style={styles.row}>
-                <Text style={styles.label}>Delivery Fee:</Text>
-                <Text style={styles.value}>₱{order.deliveryFee.toFixed(2)}</Text>
+              <View style={styles.orderFooter}>
+                <View style={[styles.statusBadge, { backgroundColor: order.status === 'Pending' ? '#FFA500' : '#4CAF50' }]}>
+                  <Text style={styles.statusText}>{order.status || 'Pending'}</Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.deleteButton}
+                  onPress={() => handleDeleteOrder(order._id)}
+                >
+                  <Ionicons name="trash-outline" size={20} color="#FFF" />
+                  <Text style={styles.deleteButtonText}>Delete</Text>
+                </TouchableOpacity>
               </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Transaction Fee:</Text>
-                <Text style={styles.value}>₱{order.transactionFee.toFixed(2)}</Text>
-              </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Total Cost:</Text>
-                <Text style={styles.totalValue}>₱{order.totalCost.toFixed(2)}</Text>
-              </View>
-
-              <View style={styles.row}>
-                <Text style={styles.label}>Status:</Text>
-                <Text style={styles.statusValue}>{order.status || 'Pending'}</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.deleteButton}
-                onPress={() => handleDeleteOrder(order)}
-              >
-                <Text style={styles.deleteButtonText}>Delete Order</Text>
-              </TouchableOpacity>
-
-              <View style={styles.divider} />
             </View>
           ))
         ) : (
-          <Text style={styles.noOrderMessage}>You have no orders yet.</Text>
+          <View style={styles.emptyStateContainer}>
+            <Image
+              source={{ uri: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/empty-state-XHibWTBAQDtn2402ptw1tu69fetJiX.png' }}
+              style={styles.emptyStateImage}
+            />
+            <Text style={styles.noOrderMessage}>You have no orders yet.</Text>
+          </View>
         )}
       </ScrollView>
     </SafeAreaView>
   );
-};
+}
 
-// Add styles as needed
 const styles = StyleSheet.create({
-  value: {
-    color: "#FFF",
-  },
   container: {
     flex: 1,
-    backgroundColor: "#162a40", // Updated to match the Profile component background
-    padding: 20,
+    backgroundColor: '#162a40',
+    padding: 10,
   },
   header: {
-    fontSize: 28, // Increased size to match header style in Profile
-    fontWeight: "bold",
-    color: "#FFF", // Updated header text color to white
-    marginBottom: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
   },
-  detailsContainer: {
-    flexGrow: 1, // Ensure the container can grow if necessary
+  headerText: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFF',
+    marginLeft: 10,
   },
-  orderContainer: {
-    marginBottom: 15,
-    padding: 15, // Added padding for consistency with Profile
-    backgroundColor: "rgba(255, 255, 255, 0.1)", // Slightly transparent background for orders
-    borderRadius: 10, // Rounded corners
+  scrollContent: {
+    padding: 16,
   },
-  label: {
-    fontWeight: "bold",
-    color: "#339bfd", // Use consistent label color from Profile
+  orderCard: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
   },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 5, // Added margin for spacing between rows
+  newOrderHighlight: {
+    borderColor: '#4A90E2',
+    borderWidth: 2,
   },
-  noOrderMessage: {
-    textAlign: "center",
+  orderHeader: {
+    padding: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  orderTitle: {
     fontSize: 18,
-    color: "#FFF", // Updated color to white
+    fontWeight: 'bold',
+    color: '#FFF',
   },
-  totalValue: {
-    color: "#d4b93f", // White color for total value
+  orderDetails: {
+    padding: 16,
   },
-  statusValue: {
-    color: "#44c24f", // White color for status
+  detailRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
   },
-  divider: {
-    height: 1,
-    backgroundColor: "#ccc",
-    marginVertical: 10,
+  detailText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: 'rgba(255, 255, 255, 0.7)',
+  },
+  totalRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  totalText: {
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#FFF',
+  },
+  orderFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+  },
+  statusBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   deleteButton: {
-    backgroundColor: "#d9534f", // Red background for delete button
-    borderRadius: 5,
-    padding: 4,
-    alignItems: "center",
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FF3B30',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
   },
   deleteButtonText: {
-    color: "#FFF", // White text color for delete button
-    fontWeight: "bold",
+    color: '#FFF',
+    fontWeight: 'bold',
+    marginLeft: 4,
+  },
+  emptyStateContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 40,
+  },
+  emptyStateImage: {
+    width: 200,
+    height: 200,
+    marginBottom: 20,
+    opacity: 0.7,
+  },
+  noOrderMessage: {
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.7)',
+    textAlign: 'center',
   },
 });
-
-export default Order;

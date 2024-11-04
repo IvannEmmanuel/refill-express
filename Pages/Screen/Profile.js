@@ -12,6 +12,7 @@ import {
 import { useUser } from "../../Components/UserContext";
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from "@react-navigation/native";
+import { CommonActions } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const { userProfile, loading, error } = useUser();
@@ -48,17 +49,25 @@ export default function ProfileScreen() {
   }
 
   const handleLogout = () => {
-    Alert.alert("Log Out", "Are you sure you want to log out?", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "OK",
-        onPress: () => {
-          navigation.navigate("LoginPage");
-        },
-      },
-    ]);
+    Alert.alert(
+      "Logout",
+      "Are you sure you want to logout?",
+      [
+        { text: "Cancel", style: "cancel" },
+        { 
+          text: "Logout", 
+          onPress: () => {
+            navigation.dispatch(
+              CommonActions.reset({
+                index: 0,
+                routes: [{ name: "LoginPage" }],
+              })
+            );
+          }
+        }
+      ]
+    );
   };
-
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>

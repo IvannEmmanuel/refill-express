@@ -30,7 +30,7 @@ const StartingPage = () => {
 
     return (
         <View style={styles.container}>
-            <Image source={require('../Images/Logo.png')} style={{ alignSelf: 'center', marginVertical: 250, height: 65, width: 300 }}/>
+            <Image source={require('../Images/Logo.png')} style={{ alignSelf: 'center', marginVertical: 250, height: 90, width: 300 }}/>
             <TouchableOpacity style={styles.getStarted} onPress={handlePress}>
                 <Text style={styles.textStarted}>GET STARTED</Text>
             </TouchableOpacity>

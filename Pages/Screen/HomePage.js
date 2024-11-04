@@ -305,9 +305,10 @@ const styles = StyleSheet.create({
   },
   logo: {
     alignSelf: "center",
-    marginVertical: 30,
+    marginVertical: 10,
   },
   map: {
+    bottom: 20,
     width: "100%",
     height: 300,
   },
@@ -332,6 +333,7 @@ const styles = StyleSheet.create({
   },
   waterContainer: {
     padding: 15,
+    bottom: 20,
   },
   waterText: {
     color: "#FFF",
@@ -351,6 +353,7 @@ const styles = StyleSheet.create({
   },
   bottomContainer: {
     padding: 15,
+    bottom: 30,
   },
   refillText: {
     color: "#FFF",

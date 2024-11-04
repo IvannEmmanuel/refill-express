@@ -178,6 +178,7 @@ const styles = StyleSheet.create({
   formContainer: {
     width: '100%',
     paddingHorizontal: 20,
+    bottom: 50,
   },
   signupText: {
     textAlign: "center",

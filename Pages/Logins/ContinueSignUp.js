@@ -247,12 +247,13 @@ const styles = StyleSheet.create({
     marginVertical: 80,
     top: 50,
     width: width * 0.7,
-    height: width * 0.2,
+    height: width * 0.35,
     resizeMode: "contain",
   },
   formContainer: {
     width: "100%",
     paddingHorizontal: 20,
+    bottom: 50,
   },
   inputContainer: {
     flexDirection: "row",

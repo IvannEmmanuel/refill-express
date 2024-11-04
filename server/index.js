@@ -4,9 +4,9 @@ const cors = require('cors');
 const bcrypt = require('bcrypt');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
-
 const User = require('./Models/User'); // Import the User model
 const app = express();
+require('dotenv').config()
 
 // Middleware
 app.use(express.json());
@@ -14,16 +14,17 @@ app.use(cors());
 const upload = multer({ dest: 'uploads/' }); // Temporary folder for file uploads
 
 // MongoDB connection
-const dbURI = 'mongodb+srv://human:indra123@cluster0.5jmta.mongodb.net/refillStationDB?retryWrites=true&w=majority&appName=Cluster0';
+const dbURI = process.env.MONGODB_URI;
+
 mongoose.connect(dbURI)
   .then(() => console.log('Connected to MongoDB'))
   .catch(err => console.log('Database connection error:', err));
 
 // Cloudinary configuration
 cloudinary.config({
-  cloud_name: 'dsgmvinyo',
-  api_key: '313897516293976',
-  api_secret: 'o5BNkrv3BOUp54fMGB9Ww1Fflmk',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 // Basic route to test server

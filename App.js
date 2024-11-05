@@ -12,6 +12,7 @@ import Gcash from "./Pages/Operation/Gcash";
 import DonePayment from "./Pages/Operation/DonePayment";
 import { UserProvider } from './Components/UserContext'; // Import UserProvider
 import ContinueSignUp from "./Pages/Logins/ContinueSignUp";
+import StationReg from "./Pages/Operation/stationReg";
 
 const Stack = createNativeStackNavigator();
 
@@ -33,6 +34,7 @@ export default function App() {
           <Stack.Screen name="Gcash" component={Gcash} />
           <Stack.Screen name="DonePayment" component={DonePayment} />
           <Stack.Screen name="ContinueSignUp" component={ContinueSignUp} />
+          <Stack.Screen name="StationReg" component={StationReg} />
         </Stack.Navigator>
       </NavigationContainer>
     </UserProvider>

@@ -1,3 +1,4 @@
+import React, { useEffect, useState, useRef } from "react";
 import {
   StyleSheet,
   Text,
@@ -10,24 +11,21 @@ import {
   SafeAreaView,
   ScrollView,
 } from "react-native";
-import React, { useEffect, useState, useRef } from "react";
 import MapView, { Marker, Polyline } from "react-native-maps";
 import * as Location from "expo-location";
 import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
 import loadFonts from "../../LoadFonts/load";
-import { useNavigation } from "@react-navigation/native"
-import mapStyle from '../../Style/mapStyle';
-import decodePolyline from '../../Components/decodePolyline';
+import mapStyle from "../../Style/mapStyle";
 
-const HomePage = () => {
+export default function HomePage() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
-  const [searchResults, setSearchResults] = useState([]);
+  const [stations, setStations] = useState([]);
   const [location, setLocation] = useState(null);
   const [locationAddress, setLocationAddress] = useState("");
   const [selectedStation, setSelectedStation] = useState(null);
   const [showStations, setShowStations] = useState(false);
-  const [distance, setDistance] = useState(null);
-  const [polylineCoordinates, setPolylineCoordinates] = useState([]); // State for polyline coordinates
+  const [polylineCoordinates, setPolylineCoordinates] = useState([]); // Initialize as an empty array
   const navigation = useNavigation();
   const mapRef = useRef(null);
 
@@ -43,14 +41,33 @@ const HomePage = () => {
 
     load();
     requestLocation();
+    fetchStations();
   }, []);
 
-  const handleContinue = () => {
-    // Navigate to Pricing screen and pass the selected station data
-    navigation.navigate("OrderInformation", {
-      station: selectedStation,
-      distance: distance,
-    });
+  const fetchStations = async () => {
+    try {
+      const response = await fetch("http://192.168.1.5:3000/api/stations");
+      const data = await response.json();
+
+      if (location) {
+        // Filter stations to only include those within 50 kilometers
+        const nearbyStations = data.filter((station) => {
+          const distance = calculateDistance(
+            location.latitude,
+            location.longitude,
+            parseFloat(station.latitude),
+            parseFloat(station.longitude)
+          );
+          return distance <= 20; // Only include stations within 20 km
+        });
+
+        setStations(nearbyStations); // Update the state with filtered stations
+      } else {
+        setStations(data); // If location is not available, show all stations
+      }
+    } catch (error) {
+      console.error("Error fetching stations:", error);
+    }
   };
 
   const requestLocation = async () => {
@@ -58,36 +75,13 @@ const HomePage = () => {
     if (status === "granted") {
       const currentLocation = await Location.getCurrentPositionAsync({});
       setLocation(currentLocation.coords);
-      fetchNearbyStations(
-        currentLocation.coords.latitude,
-        currentLocation.coords.longitude
-      );
       fetchAddress(
         currentLocation.coords.latitude,
         currentLocation.coords.longitude
       );
+      fetchStations();
     } else {
       console.error("Location permission not granted");
-    }
-  };
-
-  const fetchNearbyStations = async (latitude, longitude) => {
-    try {
-      const response = await fetch(
-        `https://maps.gomaps.pro/maps/api/place/nearbysearch/json?location=${latitude},${longitude}&radius=10000&keyword=water%20refill%20station&key=AlzaSy7zPvLBOOR0Y6ehGrErJFjTWFumiZlyjeR`
-      );
-      const data = await response.json();
-
-      if (data.results) {
-        // Add price to each station
-        const stationsWithPrice = data.results.map((station) => ({
-          ...station,
-          price: 15, // Temporary price per gallon
-        }));
-        setSearchResults(stationsWithPrice);
-      }
-    } catch (error) {
-      console.error("Error fetching nearby stations:", error);
     }
   };
 
@@ -106,51 +100,108 @@ const HomePage = () => {
     }
   };
 
-  const fetchDistanceAndRoute = async (destination) => {
+  const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Radius of the Earth in kilometers
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    const distance = R * c; // Distance in kilometers
+    return distance.toFixed(2);
+  };
+
+  const decodePolyline = (encoded) => {
+    let points = [];
+    let index = 0;
+    const len = encoded.length;
+    let lat = 0;
+    let lng = 0;
+
+    while (index < len) {
+      let b,
+        shift = 0,
+        result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlat = (result >> 1) ^ -(result & 1);
+      lat += dlat;
+
+      shift = 0;
+      result = 0;
+      do {
+        b = encoded.charCodeAt(index++) - 63;
+        result |= (b & 0x1f) << shift;
+        shift += 5;
+      } while (b >= 0x20);
+
+      const dlng = (result >> 1) ^ -(result & 1);
+      lng += dlng;
+
+      points.push({
+        latitude: lat / 1e5,
+        longitude: lng / 1e5,
+      });
+    }
+
+    return points;
+  };
+
+  const fetchRouteAndDistance = async (destination) => {
     if (location) {
       const origin = `${location.latitude},${location.longitude}`;
-      const dest = `${destination.geometry.location.lat},${destination.geometry.location.lng}`;
-      const apiKey = "AlzaSy7zPvLBOOR0Y6ehGrErJFjTWFumiZlyjeR"; // Replace with your actual API key
+      const dest = `${destination.latitude},${destination.longitude}`;
+      const apiKey = "AlzaSyIRdmcgCbi3PuIFh_FGH5iRo5Lf1tK_Tlb"; // Replace with your actual API key
 
       try {
-        // Fetching distance
-        const distanceResponse = await fetch(
-          `https://maps.gomaps.pro/maps/api/distancematrix/json?origins=${origin}&destinations=${dest}&key=${apiKey}`
-        );
-        const distanceData = await distanceResponse.json();
-
-        if (
-          distanceData.rows.length > 0 &&
-          distanceData.rows[0].elements[0].status === "OK"
-        ) {
-          const distanceText = distanceData.rows[0].elements[0].distance.text;
-          setDistance(distanceText); // Set distance text
-        }
-
-        // Fetching route for polyline
         const directionsResponse = await fetch(
           `https://maps.gomaps.pro/maps/api/directions/json?origin=${origin}&destination=${dest}&key=${apiKey}`
         );
         const directionsData = await directionsResponse.json();
 
         if (directionsData.routes.length > 0) {
-          const polyline = directionsData.routes[0].overview_polyline.points; // Get the encoded polyline string
+          const route = directionsData.routes[0];
+          const polyline = route.overview_polyline.points;
           const points = decodePolyline(polyline); // Decode the polyline
           setPolylineCoordinates(points); // Set polyline coordinates
         }
       } catch (error) {
-        console.error("Error fetching distance or route:", error);
+        console.error("Error fetching route:", error);
       }
     }
   };
 
-  const handleStationSelect = (item) => {
-    setSelectedStation(item);
-    fetchDistanceAndRoute(item); // Fetch distance and route when a station is selected
+  const handleStationSelect = async (item) => {
+    if (location) {
+      const distance = calculateDistance(
+        location.latitude,
+        location.longitude,
+        item.latitude,
+        item.longitude
+      );
+      setSelectedStation({ ...item, distance: `${distance} km` });
+
+      // Fetch and set the route
+      await fetchRouteAndDistance(item);
+    }
   };
 
+  useEffect(() => {
+    if (location) {
+      fetchStations(); // Re-fetch stations when location is updated
+    }
+  }, [location]);
+
   if (!fontsLoaded || !location) {
-    return null; // Render nothing while fonts or location are loading
+    return null;
   }
 
   return (
@@ -159,6 +210,7 @@ const HomePage = () => {
         <Image source={require("../../Images/Logo.png")} style={styles.logo} />
 
         <MapView
+          ref={mapRef}
           style={styles.map}
           initialRegion={{
             latitude: location.latitude,
@@ -180,22 +232,6 @@ const HomePage = () => {
             </Marker>
           )}
 
-          {searchResults.map((place) => (
-            <Marker
-              key={place.place_id}
-              coordinate={{
-                latitude: place.geometry.location.lat,
-                longitude: place.geometry.location.lng,
-              }}
-              title={place.name}
-              description={place.vicinity}
-            >
-              <View style={styles.stationMarkerContainer}>
-                <Ionicons name="water" size={24} color="#339bfd" />
-              </View>
-            </Marker>
-          ))}
-
           {polylineCoordinates.length > 0 && (
             <Polyline
               coordinates={polylineCoordinates}
@@ -203,6 +239,22 @@ const HomePage = () => {
               strokeWidth={3}
             />
           )}
+
+          {stations.map((station) => (
+            <Marker
+              key={station._id}
+              coordinate={{
+                latitude: parseFloat(station.latitude),
+                longitude: parseFloat(station.longitude),
+              }}
+              title={station.stationName}
+              description={station.address}
+            >
+              <View style={styles.stationMarkerContainer}>
+                <Ionicons name="water" size={24} color="#339bfd" />
+              </View>
+            </Marker>
+          ))}
         </MapView>
 
         <View style={styles.waterContainer}>
@@ -231,22 +283,29 @@ const HomePage = () => {
           {selectedStation && (
             <View style={styles.selectedStation}>
               <Text style={styles.selectedTitle}>Selected Station</Text>
-              <Text style={styles.selectedName}>{selectedStation.name}</Text>
-              <Text style={styles.selectedAddress}>
-                {selectedStation.vicinity}
+              <Text style={styles.selectedName}>
+                {selectedStation.stationName}
               </Text>
-              {distance && (
+              <Text style={styles.selectedAddress}>
+                {selectedStation.address}
+              </Text>
+              {selectedStation.distance && (
                 <Text style={styles.selectedDistance}>
-                  Distance: {distance}
+                  Distance: {selectedStation.distance}
                 </Text>
               )}
               <Text style={styles.selectedPrice}>
-                Price: ₱{selectedStation.price} per gallon
+                Price: ₱{selectedStation.price}
               </Text>
 
               <TouchableOpacity
                 style={styles.continueButton}
-                onPress={handleContinue}
+                onPress={() =>
+                  navigation.navigate("OrderInformation", {
+                    station: selectedStation,
+                    distance: selectedStation?.distance,
+                  })
+                }
               >
                 <Text style={styles.continueButtonText}>Continue</Text>
               </TouchableOpacity>
@@ -268,8 +327,8 @@ const HomePage = () => {
               </TouchableOpacity>
             </View>
             <FlatList
-              data={searchResults}
-              keyExtractor={(item) => item.place_id}
+              data={stations}
+              keyExtractor={(item) => item._id}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={styles.stationItem}
@@ -278,11 +337,21 @@ const HomePage = () => {
                     setShowStations(false);
                   }}
                 >
-                  <Text style={styles.stationName}>{item.name}</Text>
-                  <Text style={styles.stationAddress}>{item.vicinity}</Text>
-                  <Text style={styles.stationPrice}>
-                    Price: ₱{item.price} per gallon
-                  </Text>
+                  <Text style={styles.stationName}>{item.stationName}</Text>
+                  <Text style={styles.stationAddress}>{item.address}</Text>
+                  <Text style={styles.stationPrice}>Price: ₱{item.price}</Text>
+                  {location && (
+                    <Text style={styles.stationDistance}>
+                      Distance:{" "}
+                      {calculateDistance(
+                        location.latitude,
+                        location.longitude,
+                        parseFloat(item.latitude),
+                        parseFloat(item.longitude)
+                      )}{" "}
+                      km
+                    </Text>
+                  )}
                 </TouchableOpacity>
               )}
             />
@@ -291,14 +360,17 @@ const HomePage = () => {
       </Modal>
     </SafeAreaView>
   );
-};
-
-export default HomePage;
+}
 
 const styles = StyleSheet.create({
   container: {
     backgroundColor: "#162a40",
     flex: 1,
+  },
+  stationDistance: {
+    color: "#339bfd",
+    fontSize: 14,
+    marginTop: 5,
   },
   scrollViewContent: {
     flexGrow: 1,
@@ -316,18 +388,18 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
     borderRadius: 10,
-    backgroundColor: 'rgba(51, 155, 253, 0.3)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: "rgba(51, 155, 253, 0.3)",
+    justifyContent: "center",
+    alignItems: "center",
   },
   markerDot: {
     width: 10,
     height: 10,
     borderRadius: 5,
-    backgroundColor: '#339bfd',
+    backgroundColor: "#339bfd",
   },
   stationMarkerContainer: {
-    backgroundColor: 'white',
+    backgroundColor: "white",
     borderRadius: 15,
     padding: 5,
   },
@@ -445,6 +517,9 @@ const styles = StyleSheet.create({
     fontFamily: "Jakarta-Semibold",
     marginTop: 10,
   },
+  stationPrice: {
+    color: "#FFF",
+  },
   continueButton: {
     backgroundColor: "#339bfd",
     borderRadius: 10,
@@ -456,11 +531,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     fontSize: 16,
     fontFamily: "Jakarta-Semibold",
-  },
-  stationPrice: {
-    color: "#FFF",
-    fontSize: 14,
-    marginTop: 5,
   },
   selectedPrice: {
     color: "#FFF",

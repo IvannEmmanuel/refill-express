@@ -14,7 +14,6 @@ import * as Location from "expo-location";
 const Pricing = ({ route }) => {
   const navigation = useNavigation();
   const { station, distance } = route.params;
-
   const [gallons, setGallons] = useState("");
   const [userLocation, setUserLocation] = useState(null);
   const [locationErrorMsg, setLocationErrorMsg] = useState(null);
@@ -54,7 +53,9 @@ const Pricing = ({ route }) => {
   const handleConfirmOrder = () => {
     if (userLocation && gallons) {
       const pricePerGallon = station.price; // Get price from station
+      const name = station.stationName;
       navigation.navigate("Payment", {
+        name,
         gallons: parseFloat(gallons),
         pricePerGallon: pricePerGallon,
         distance,
@@ -74,8 +75,8 @@ const Pricing = ({ route }) => {
       </View>
 
       <View style={styles.stationInfo}>
-        <Text style={styles.stationName}>{station.name}</Text>
-        <Text style={styles.stationAddress}>{station.vicinity}</Text>
+        <Text style={styles.stationName}>{station.stationName}</Text>
+        <Text style={styles.stationAddress}>{station.address}</Text>
         {distance && <Text style={styles.distance}>Distance: {distance}</Text>}
         <Text style={styles.price}>Price: ₱{station.price} per gallon</Text>
       </View>

@@ -5,6 +5,7 @@ const bcrypt = require('bcrypt');
 const multer = require('multer');
 const cloudinary = require('cloudinary').v2;
 const User = require('./Models/User'); // Import the User model
+const stationRoutes = require('./routes/stationRoutes');
 const app = express();
 require('dotenv').config()
 
@@ -31,6 +32,8 @@ cloudinary.config({
 app.get('/', (req, res) => {
   res.send('Server is running!');
 });
+
+app.use('/api/stations', stationRoutes);
 
 // File upload route
 app.post('/api/upload', upload.single('file'), async (req, res) => {

@@ -14,11 +14,12 @@ const Payment = () => {
   const navigation = useNavigation();
   const route = useRoute();
 
-  const { gallons, pricePerGallon } = route.params;
+  const { gallons, pricePerGallon, name } = route.params;
   const distance = parseFloat(route.params.distance); // Convert to a float number
 
   const [selectedPaymentMethod, setSelectedPaymentMethod] = useState("gcash");
 
+  console.log("Name:", name);
   console.log("Gallons:", gallons);
   console.log("Price per Gallon:", pricePerGallon);
   console.log("Distance:", distance);
@@ -32,7 +33,8 @@ const Payment = () => {
   const handleGcashPayment = () => {
     // Logic for confirming payment can go here
     console.log(`Payment confirmed: ${totalCost} via ${selectedPaymentMethod}`);
-    navigation.navigate("Gcash",{
+    navigation.navigate("Gcash", {
+      name,
       totalCost,
       gallonsCost,
       deliveryFee,
@@ -43,7 +45,8 @@ const Payment = () => {
   const handleArrivalPayment = () => {
     // Logic for confirming payment can go here
     console.log(`Payment confirmed: ${totalCost} via ${selectedPaymentMethod}`);
-    navigation.navigate("DonePayment",{
+    navigation.navigate("DonePayment", {
+      name,
       totalCost,
       gallonsCost,
       deliveryFee,
@@ -56,6 +59,9 @@ const Payment = () => {
       <Text style={styles.title}>Payment Summary</Text>
 
       <View style={styles.fareContainer}>
+        <View style={{ alignSelf: "center" }}>
+          <Text style={styles.nameLabel}>{name}</Text>
+        </View>
         <Text style={styles.fareLabel}>
           Gallons Cost (₱{pricePerGallon} x {gallons}):{" "}
         </Text>
@@ -152,6 +158,13 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#FFF",
     fontFamily: "Jakarta-Regular",
+  },
+  nameLabel: {
+    fontSize: 20,
+    marginBottom: 10,
+    color: "#339bfd",
+    fontWeight: "bold",
+    fontFamily: "Jakarta-Semibold",
   },
   fareValue: {
     fontSize: 16,

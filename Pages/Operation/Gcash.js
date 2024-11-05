@@ -7,8 +7,10 @@ const Gcash = () => {
     const navigation = useNavigation();
     const route = useRoute();
 
-    const { totalCost, gallonsCost, deliveryFee, transactionFee } = route.params; // Get passed data
+    const { totalCost, gallonsCost, deliveryFee, transactionFee, name } = route.params; // Get passed data
 
+
+    console.log("Station: " + name);
     console.log("Gallons Cost: ₱" + gallonsCost);
     console.log("Delivery Fee: ₱" + deliveryFee);
     console.log("Transaction Fee: ₱" + transactionFee);
@@ -22,6 +24,7 @@ const Gcash = () => {
 
       console.log(`Mobile Number: ${mobileNumber}`);
       navigation.navigate('DonePayment',{
+        name,
         gallonsCost,
         deliveryFee,
         transactionFee,

@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import {
   StyleSheet,
   Text,
@@ -7,16 +7,17 @@ import {
   TouchableOpacity,
   Image,
   ActivityIndicator,
-  Alert,
+  Modal, // Import Modal
 } from "react-native";
 import { useUser } from "../../Components/UserContext";
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from "@expo/vector-icons";
 import { useNavigation } from "@react-navigation/native";
 import { CommonActions } from "@react-navigation/native";
 
 export default function ProfileScreen() {
   const { userProfile, loading, error } = useUser();
   const navigation = useNavigation();
+  const [modalVisible, setModalVisible] = useState(false); // State for Modal visibility
 
   const formatDate = (dateString) => {
     const options = { year: "numeric", month: "long", day: "numeric" };
@@ -49,30 +50,30 @@ export default function ProfileScreen() {
   }
 
   const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Logout", 
-          onPress: () => {
-            navigation.dispatch(
-              CommonActions.reset({
-                index: 0,
-                routes: [{ name: "LoginPage" }],
-              })
-            );
-          }
-        }
-      ]
+    setModalVisible(true); // Show the modal
+  };
+
+  const confirmLogout = () => {
+    setModalVisible(false); // Hide the modal
+    navigation.dispatch(
+      CommonActions.reset({
+        index: 0,
+        routes: [{ name: "LoginPage" }],
+      })
     );
   };
+
   return (
     <ScrollView style={styles.container}>
       <View style={styles.header}>
-        <Ionicons name="person" size={24} color="#4A90E2" />
-        <Text style={styles.headerText}>Profile</Text>
+        <View style={styles.headerLeft}>
+          <Ionicons name="person" size={24} color="#4A90E2" />
+          <Text style={styles.headerText}>Profile</Text>
+        </View>
+        <TouchableOpacity onPress={() => navigation.navigate("StationReg")} style={styles.registrationIcon}>
+          <Ionicons name="water" size={24} color="#4A90E2" />
+          <Ionicons name="add" size={12} color="#4A90E2" />
+        </TouchableOpacity>
       </View>
       <View style={styles.profileSection}>
         <Image
@@ -92,6 +93,34 @@ export default function ProfileScreen() {
       <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
         <Text style={styles.logoutButtonText}>Log Out</Text>
       </TouchableOpacity>
+
+      {/* Custom Logout Confirmation Modal */}
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>Are you sure you want to log out?</Text>
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)} // Cancel action
+                style={styles.modalCancelButton}
+              >
+                <Text style={styles.modalButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={confirmLogout} // Confirm action
+                style={styles.modalButton}
+              >
+                <Text style={styles.modalButtonText}>Confirm</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 }
@@ -115,16 +144,26 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
     marginVertical: 20,
     padding: 10,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   headerText: {
     fontSize: 24,
     fontWeight: 'bold',
     color: '#FFF',
     marginLeft: 10,
+  },
+  registrationIcon: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 10,
   },
   centerContainer: {
     flex: 1,
@@ -201,5 +240,49 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 16,
     fontWeight: '600',
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    borderRadius: 10,
+    backgroundColor: '#1E3A5F', // Match the LoginPage color
+    alignItems: 'center',
+  },
+  modalText: {
+    color: '#FFFFFF',
+    fontSize: 18,
+    textAlign: 'center',
+    marginBottom: 20,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalCancelButton:{
+    flex: 1,
+    marginHorizontal: 5,
+    backgroundColor: '#339bfd', // Button color
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  modalButton: {
+    flex: 1,
+    marginHorizontal: 5,
+    backgroundColor: '#EF4444', // Button color
+    paddingVertical: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  modalButtonText: {
+    color: '#FFFFFF', // Text color for buttons
+    fontSize: 16,
   },
 });

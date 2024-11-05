@@ -11,6 +11,7 @@ import {
   ScrollView,
   TouchableWithoutFeedback,
   Keyboard,
+  Modal, // Import Modal
 } from "react-native";
 import React, { useState, useEffect } from "react";
 import loadFonts from "../../LoadFonts/load";
@@ -23,61 +24,62 @@ const LoginPage = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigation = useNavigation();
+  const [modalVisible, setModalVisible] = useState(false); // State for Modal visibility
+  const [modalMessage, setModalMessage] = useState(''); // Modal message
+  const [userNavigationParams, setUserNavigationParams] = useState(null); // Navigation params
 
   const handleLogin = async () => {
     if (!email || !password) {
-        Alert.alert("Error", "Please enter both email and password.");
-        return;
+      setModalMessage("Please enter both email and password.");
+      setModalVisible(true);
+      return;
     }
 
     try {
-        const response = await fetch('http://192.168.1.5:3000/api/login', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({ email, password }),
-        });
+      const response = await fetch('http://192.168.1.5:3000/api/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email, password }),
+      });
 
-        console.log('Response status:', response.status);
-        const data = await response.json();
-        console.log('Response data:', data);
+      const data = await response.json();
 
-        if (response.ok) {
-            // Fetch user profile data after successful login
-            const userResponse = await fetch(`http://192.168.1.5:3000/api/users/${data.userId}`);
-            const userData = await userResponse.json();
+      if (response.ok) {
+        // Fetch user profile data after successful login
+        const userResponse = await fetch(`http://192.168.1.5:3000/api/users/${data.userId}`);
+        const userData = await userResponse.json();
 
-            if (userResponse.ok) {
-                // Here, we assume userData includes order-related fields
-                await updateUserProfile(userData); // Store all user data, including order information
-                Alert.alert("Success", "Login successful");
+        if (userResponse.ok) {
+          await updateUserProfile(userData); // Store all user data
+          setModalMessage("Login successful");
+          setModalVisible(true);
 
-                // Pass the necessary data when navigating to the Dashboard
-                navigation.navigate('Dashboard', {
-                    screen: 'Home',
-                    params:{
-                      userId: userData._id, // Pass user ID
-                      email: userData.email,
-                      gallonsCost: userData.gallonsCost, // Cost of gallons ordered
-                      deliveryFee: userData.deliveryFee, // Delivery fee
-                      transactionFee: userData.transactionFee, // Transaction fee
-                      totalCost: userData.totalCost, // Total cost of the order
-                      status: userData.status, // Order status
-                    }
-                });
-            } else {
-                Alert.alert("Error", "Failed to fetch user data");
-            }
+          // Store user data for later use
+          setUserNavigationParams({
+            userId: userData._id,
+            email: userData.email,
+            gallonsCost: userData.gallonsCost,
+            deliveryFee: userData.deliveryFee,
+            transactionFee: userData.transactionFee,
+            totalCost: userData.totalCost,
+            status: userData.status,
+          });
         } else {
-            Alert.alert("Error", data.error);
+          setModalMessage("Failed to fetch user data");
+          setModalVisible(true);
         }
+      } else {
+        setModalMessage(data.error);
+        setModalVisible(true);
+      }
     } catch (error) {
-        console.error('Login error:', error);
-        Alert.alert("Error", "An error occurred. Please try again.");
+      console.error('Login error:', error);
+      setModalMessage("An error occurred. Please try again.");
+      setModalVisible(true);
     }
   };
-
 
   const handleSignUp = () => {
     navigation.navigate("SignUp");
@@ -156,6 +158,35 @@ const LoginPage = () => {
           </View>
         </ScrollView>
       </TouchableWithoutFeedback>
+
+      {/* Modal for messages */}
+      <Modal
+        transparent={true}
+        animationType="fade"
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalText}>{modalMessage}</Text>
+            <TouchableOpacity
+              style={styles.okButton}
+              onPress={() => {
+                setModalVisible(false); // Hide the Modal
+                if (userNavigationParams) {
+                  // Navigate to the Dashboard if userNavigationParams is set
+                  navigation.navigate('Dashboard', {
+                    screen: 'Home',
+                    params: userNavigationParams,
+                  });
+                }
+              }}
+            >
+              <Text style={styles.okText}>OK</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </KeyboardAvoidingView>
   );
 };
@@ -244,5 +275,34 @@ const styles = StyleSheet.create({
     fontFamily: "Jakarta-Semibold",
     fontSize: 15,
     paddingLeft: 15,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)', // Semi-transparent background
+  },
+  modalContent: {
+    width: '80%',
+    padding: 20,
+    borderRadius: 10,
+    backgroundColor: '#2D436B',
+    alignItems: 'center',
+  },
+  modalText: {
+    marginBottom: 20,
+    fontSize: 18,
+    textAlign: 'center',
+    color: '#f5f5f5'
+  },
+  okButton: {
+    backgroundColor: '#339bfd',
+    borderRadius: 10,
+    paddingVertical: 5,
+    paddingHorizontal: 20,
+  },
+  okText: {
+    color: '#fff',
+    fontSize: 18,
   },
 });

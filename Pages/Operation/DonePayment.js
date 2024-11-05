@@ -20,7 +20,7 @@ const DonePayment = () => {
   const route = useRoute();
   const userProfile = useUser();
 
-  const { deliveryFee, transactionFee, totalCost, gallonsCost } = route.params;
+  const { deliveryFee, transactionFee, totalCost, gallonsCost, name } = route.params;
   const email = userProfile?.userProfile?.email;
 
   const handleConfirm = async () => {
@@ -70,8 +70,10 @@ const DonePayment = () => {
               );
               navigation.navigate("Order", { 
                 newOrderId: savedOrder._id,
+                name,
                 refresh: true
               });
+              console.log(name)
             }
           }
         ]

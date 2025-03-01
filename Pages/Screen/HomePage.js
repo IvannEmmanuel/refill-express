@@ -163,7 +163,7 @@ export default function HomePage() {
 
       try {
         const directionsResponse = await fetch(
-          `https://maps.gomaps.pro/maps/api/directions/json?origin=${origin}&destination=${dest}&key=${apiKey}`
+          `https://maps.googleapis.com/maps/api/directions/json?origin=${origin}&destination=${dest}&key=${apiKey}`
         );
         const directionsData = await directionsResponse.json();
 
